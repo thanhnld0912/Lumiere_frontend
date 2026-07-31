@@ -1,0 +1,6 @@
+{
+  "name": "Lumiere",
+  "description": "Lumiere - Premium Light Novel Portal with immersive reading, library synchronization, and discovery.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
