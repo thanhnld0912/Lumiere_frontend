@@ -1,11 +1,16 @@
 import React from 'react';
 import { USER_AVATAR } from '../data/mockData';
+import type { User } from '../types';
 
 interface HeaderProps {
   currentTab: string;
   onSelectTab: (tab: string) => void;
   onOpenSearch: () => void;
   onOpenMenu?: () => void;
+  /** Người dùng đang đăng nhập, null nếu là khách. */
+  user?: User | null;
+  /** Mở form đăng nhập khi khách bấm vào avatar. */
+  onOpenAuth?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -13,6 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectTab,
   onOpenSearch,
   onOpenMenu,
+  user,
+  onOpenAuth,
 }) => {
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#101319]/60 backdrop-blur-xl border-b border-white/10 h-16 transition-all duration-300">
@@ -87,16 +94,21 @@ export const Header: React.FC<HeaderProps> = ({
           >
             search
           </button>
+          {/* Đã đăng nhập -> vào Profile. Là khách -> mở form đăng nhập. */}
           <div
-            onClick={() => onSelectTab('profile')}
-            className="w-9 h-9 rounded-full bg-[#272a31] border border-white/10 overflow-hidden cursor-pointer active:scale-95 transition-all hover:border-[#cabeff]/50 shadow-sm"
-            title="Profile"
+            onClick={() => (user ? onSelectTab('profile') : onOpenAuth?.())}
+            className="w-9 h-9 rounded-full bg-[#272a31] border border-white/10 overflow-hidden cursor-pointer active:scale-95 transition-all hover:border-[#cabeff]/50 shadow-sm flex items-center justify-center"
+            title={user ? user.displayName : 'Sign in'}
           >
-            <img
-              className="w-full h-full object-cover"
-              src={USER_AVATAR}
-              alt="User Avatar"
-            />
+            {user ? (
+              <img
+                className="w-full h-full object-cover"
+                src={user.avatarUrl ?? USER_AVATAR}
+                alt={user.displayName}
+              />
+            ) : (
+              <span className="material-symbols-outlined text-[#c9c4d8] text-xl">login</span>
+            )}
           </div>
         </div>
       </div>

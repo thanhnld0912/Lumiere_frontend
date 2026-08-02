@@ -10,6 +10,12 @@ export interface Chapter {
 }
 
 export interface TranslationGroup {
+  /**
+   * Định danh ổn định do backend trả về, dùng để gọi
+   * POST/DELETE /api/translation-groups/:slug/follow.
+   * Optional để dữ liệu mock cũ (không có field này) vẫn hợp lệ.
+   */
+  slug?: string;
   name: string;
   quality: string;
   avatarUrl: string;
@@ -60,6 +66,27 @@ export interface SyncStats {
   newGroupsCount: number;
   nextSyncCountdown: string;
   nextSyncPercentage: number;
+}
+
+/**
+ * Người dùng đã đăng nhập, trả về từ GET /api/auth/me.
+ *
+ * Trước đây ProfileView hardcode các giá trị này trong JSX
+ * (ProfileView.tsx:31-46); đây là hình dạng dữ liệu thật tương ứng.
+ */
+export interface UserStats {
+  chaptersRead: number;
+  bookmarksCount: number;
+  streakDays: number;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: 'user' | 'admin';
+  stats?: UserStats;
 }
 
 export type ThemeMode = 'dark' | 'sepia' | 'amoled';

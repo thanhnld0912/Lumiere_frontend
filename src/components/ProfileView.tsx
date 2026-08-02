@@ -1,51 +1,90 @@
 import React, { useState } from 'react';
-import { Novel } from '../types';
+import { Novel, User } from '../types';
 import { USER_AVATAR } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 
 interface ProfileViewProps {
   novels: Novel[];
   onSelectNovel: (novel: Novel) => void;
   onReadChapter: (novel: Novel, chapterId?: string) => void;
+  /** Người dùng đang đăng nhập, null nếu là khách. */
+  user?: User | null;
+  onOpenAuth?: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   novels,
   onSelectNovel,
   onReadChapter,
+  user,
+  onOpenAuth,
 }) => {
+  const { logout } = useAuth();
   const [activeSubTab, setActiveSubTab] = useState<'bookmarks' | 'history'>('bookmarks');
 
   const bookmarkedNovels = novels.filter((n) => n.isBookmarked);
   const historyNovels = novels.filter((n) => n.lastReadChapterId);
+
+  // Khách: thư viện là dữ liệu riêng của từng người nên không có gì để hiển thị.
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 gap-5 text-center animate-in fade-in duration-300">
+        <span className="material-symbols-outlined text-[#cabeff] text-5xl">account_circle</span>
+        <h2 className="font-headline text-2xl font-bold text-white">Your library awaits</h2>
+        <p className="font-body text-[#c9c4d8] max-w-md">
+          Sign in to sync your bookmarks, reading history and chapter progress across devices.
+        </p>
+        <button
+          onClick={onOpenAuth}
+          className="mt-2 px-8 py-3 rounded-full bg-gradient-to-r from-[#cabeff] to-[#cebdff] text-[#31009a] font-bold font-label shadow-[0_0_20px_rgba(202,190,255,0.35)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+        >
+          Sign In
+        </button>
+      </div>
+    );
+  }
+
+  const stats = user.stats;
 
   return (
     <div className="space-y-8 pb-24 animate-in fade-in duration-300">
       {/* User Header Profile Card */}
       <div className="glass-panel p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row items-center gap-6 shadow-xl">
         <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#cabeff] shadow-lg flex-shrink-0">
-          <img src={USER_AVATAR} alt="User Avatar" className="w-full h-full object-cover" />
+          <img
+            src={user.avatarUrl ?? USER_AVATAR}
+            alt={user.displayName}
+            className="w-full h-full object-cover"
+          />
         </div>
 
         <div className="flex-1 text-center md:text-left space-y-2">
           <h2 className="font-display text-2xl md:text-3xl font-bold text-white">
-            Archivist Traveler
+            {user.displayName}
           </h2>
-          <p className="font-body text-[#c9c4d8] text-sm">
-            nguyenledangthanh.a41922@gmail.com • VIP Reader Level 8
-          </p>
+          <p className="font-body text-[#c9c4d8] text-sm">{user.email}</p>
 
           <div className="flex flex-wrap justify-center md:justify-start gap-3 pt-2">
             <span className="px-3 py-1 rounded-full bg-[#cabeff]/15 text-[#cabeff] font-label text-xs border border-[#cabeff]/20">
-              2,400 Chapters Read
+              {(stats?.chaptersRead ?? 0).toLocaleString('en-US')} Chapters Read
             </span>
             <span className="px-3 py-1 rounded-full bg-[#cebdff]/15 text-[#cebdff] font-label text-xs border border-[#cebdff]/20">
-              {bookmarkedNovels.length} Bookmarks
+              {stats?.bookmarksCount ?? bookmarkedNovels.length} Bookmarks
             </span>
             <span className="px-3 py-1 rounded-full bg-[#60d4fb]/15 text-[#60d4fb] font-label text-xs border border-[#60d4fb]/20">
-              42 Days Streak
+              {stats?.streakDays ?? 0} Days Streak
             </span>
           </div>
         </div>
+
+        <button
+          onClick={logout}
+          className="px-5 py-2.5 rounded-full glass-panel border border-white/10 text-[#c9c4d8] hover:text-[#cabeff] hover:border-[#cabeff]/40 transition-all font-label text-sm cursor-pointer flex items-center gap-2 self-center"
+          title="Sign out"
+        >
+          <span className="material-symbols-outlined text-base">logout</span>
+          Sign Out
+        </button>
       </div>
 
       {/* Sub Tabs */}

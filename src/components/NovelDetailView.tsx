@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Novel, Chapter } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Novel } from '../types';
 
 interface NovelDetailViewProps {
   novel: Novel;
@@ -7,6 +7,11 @@ interface NovelDetailViewProps {
   onReadChapter: (novel: Novel, chapterId?: string) => void;
   onSelectNovel: (novel: Novel) => void;
   onToggleBookmark: (novelId: string) => void;
+  /**
+   * Gọi POST/DELETE /api/translation-groups/:slug/follow.
+   * Trả true nếu thành công; false thì UI rollback.
+   */
+  onToggleFollowGroup?: (groupSlug: string, shouldFollow: boolean) => Promise<boolean>;
 }
 
 export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
@@ -15,6 +20,7 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
   onReadChapter,
   onSelectNovel,
   onToggleBookmark,
+  onToggleFollowGroup,
 }) => {
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
   const [showAllChapters, setShowAllChapters] = useState(false);
@@ -23,6 +29,24 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
     novel.translationGroup?.isFollowed || false
   );
   const [copiedShare, setCopiedShare] = useState(false);
+
+  // Đồng bộ lại khi đổi sang novel khác hoặc khi detail được nạp xong từ API.
+  useEffect(() => {
+    setIsGroupFollowed(novel.translationGroup?.isFollowed || false);
+  }, [novel.id, novel.translationGroup?.isFollowed]);
+
+  /** Cập nhật UI ngay, rollback nếu request thất bại. */
+  const handleToggleFollow = async () => {
+    const groupSlug = novel.translationGroup?.slug;
+    const nextValue = !isGroupFollowed;
+
+    setIsGroupFollowed(nextValue);
+
+    if (!groupSlug || !onToggleFollowGroup) return;
+
+    const ok = await onToggleFollowGroup(groupSlug, nextValue);
+    if (!ok) setIsGroupFollowed(!nextValue);
+  };
 
   // Suggested novels
   const suggestions = allNovels.filter((n) => n.id !== novel.id).slice(0, 2);
@@ -280,7 +304,7 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
                   Visit Site
                 </a>
                 <button
-                  onClick={() => setIsGroupFollowed(!isGroupFollowed)}
+                  onClick={handleToggleFollow}
                   className={`px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all cursor-pointer font-label text-sm ${
                     isGroupFollowed
                       ? 'bg-[#32353c] text-white border border-white/10'
