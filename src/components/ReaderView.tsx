@@ -52,14 +52,28 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
     };
   }, [settings.theme]);
 
-  // Story Content default fallback if missing in mock
-  const paragraphs = currentChapter.content || [
-    "The dawn did not break with a roar, but with a whisper of violet light that bled through the heavy velvet curtains of the archives. Elara watched the dust motes dance in the first rays, each speck a tiny universe revolving around the silence of the room. For three days, the silence had been her only companion, save for the rhythmic turning of brittle parchment pages.",
-    "The manuscript lay open before her, its ink shimmering with a faint, bioluminescent glow that hadn't been there when the sun was down. The letters seemed to shift, rearranging themselves not into words, but into memories. She reached out, her fingertips hovering just millimeters above the surface. She could feel the hum of the magic—a low, vibrating frequency that resonated in her very marrow.",
-    '"So it begins," she whispered, her voice sounding foreign in the stillness. The awakening wasn\'t just in the text; it was a physical sensation, like a long-dormant engine finally catching fire. The archives felt smaller now, the walls less like a sanctuary and more like a shell that she was rapidly outgrowing.',
-    "Outside, the city of Aethelgard was still asleep, unaware that the foundation of its history had just been rewritten in a quiet room at the top of the Ivory Tower. Elara closed her eyes, letting the violet light seep through her eyelids. The history of the world was no longer a collection of dates and names. It was a living, breathing thing, and she was its new heartbeat.",
-    "She turned the page. The paper felt warm now, pulsing with the rhythm of her own heart. The next chapter wasn't written in ink, but in light. And for the first time in centuries, the light was beckoning someone to follow."
-  ];
+  // Nội dung chương, lấy từ GET /api/novels/:slug/chapters/:chapterSlug.
+  //
+  // Trước đây chỗ này có một mảng đoạn văn hardcode làm nội dung dự phòng, nên
+  // MỌI chương chưa có text đều hiển thị cùng một trích đoạn — tức là nội dung
+  // sai gắn dưới tên chương khác. Giờ thay bằng trạng thái rỗng trung thực.
+  const paragraphs = currentChapter.content ?? [];
+  const hasContent = paragraphs.length > 0;
+
+  // Tách riêng để dùng lại được ở cả hai nhánh có/không có nội dung —
+  // một chương có thể có tranh minh hoạ mà chưa có phần text.
+  const illustration = currentChapter.illustrationUrl ? (
+    <div className="py-8 flex justify-center">
+      <div className="w-full h-[380px] md:h-[440px] rounded-xl overflow-hidden shadow-2xl relative group border border-white/10">
+        <img
+          src={currentChapter.illustrationUrl}
+          alt="Chapter Illustration"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="min-h-screen relative pb-32 animate-in fade-in duration-300">
@@ -108,25 +122,40 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             Chapter {currentChapter.number}: {currentChapter.title}
           </h2>
 
-          <p>{paragraphs[0]}</p>
+          {hasContent ? (
+            <>
+              {/* Đoạn mở đầu, rồi tranh minh hoạ, rồi phần còn lại */}
+              <p>{paragraphs[0]}</p>
 
-          {/* Chapter Illustration Image if available */}
-          {currentChapter.illustrationUrl && (
-            <div className="py-8 flex justify-center">
-              <div className="w-full h-[380px] md:h-[440px] rounded-xl overflow-hidden shadow-2xl relative group border border-white/10">
-                <img
-                  src={currentChapter.illustrationUrl}
-                  alt="Chapter Illustration"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+              {illustration}
+
+              {paragraphs.slice(1).map((p, index) => (
+                <p key={index}>{p}</p>
+              ))}
+            </>
+          ) : (
+            <>
+              {illustration}
+
+              {/*
+                Trạng thái rỗng. Cỡ chữ ở đây đặt bằng class Tailwind nên không
+                bị ảnh hưởng bởi fontSize/lineHeight inline của reader settings.
+              */}
+              <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+                <span className="material-symbols-outlined text-[#cabeff]/40 text-5xl leading-none">
+                  auto_stories
+                </span>
+                <h3 className="font-headline text-xl font-bold text-[#e1e2eb] leading-snug">
+                  Chapter content not available yet
+                </h3>
+                <p className="font-body text-sm text-[#c9c4d8] max-w-sm leading-relaxed">
+                  This chapter has been catalogued, but its text hasn't been synchronised
+                  from the translation group yet. It will appear here after the next
+                  library sync.
+                </p>
               </div>
-            </div>
+            </>
           )}
-
-          {paragraphs.slice(1).map((p, index) => (
-            <p key={index}>{p}</p>
-          ))}
         </article>
       </main>
 

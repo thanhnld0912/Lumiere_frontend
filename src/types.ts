@@ -32,7 +32,11 @@ export interface Novel {
   backdropUrl?: string;
   rating: number;
   ratingsCount: string;
-  status: 'Ongoing' | 'Completed' | 'Hiatus';
+  // Khớp enum novel_status ở database (migration 001_status_enum.sql).
+  // 'Dropped' và 'Unknown' được thêm cho crawler: NovelUpdates có những trạng
+  // thái này, và 'Unknown' là fallback trung thực khi không map được — tốt hơn
+  // là mặc định gán bừa 'Ongoing'.
+  status: 'Ongoing' | 'Completed' | 'Hiatus' | 'Dropped' | 'Unknown';
   totalChapters: number;
   genres: string[];
   synopsis: string;
