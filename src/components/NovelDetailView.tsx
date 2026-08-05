@@ -57,6 +57,19 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
   );
   const visibleChapters = showAllChapters ? sortedChapters : sortedChapters.slice(0, 4);
 
+  /*
+   * Ba con số KHÁC NHAU, rất dễ nhầm lẫn:
+   *   novel.totalChapters   — nguồn báo có bao nhiêu chương  (VD 991)
+   *   availableChapters     — đã đồng bộ được bao nhiêu       (VD 1)
+   *   visibleChapters.length— đang render bao nhiêu dòng      (VD 1, tối đa 4)
+   *
+   * Fallback về chapters.length cho dữ liệu mock cũ: ở đó mảng CHÍNH LÀ tất cả
+   * những gì tồn tại, nên hai con số trùng nhau.
+   */
+  const availableChapters = novel.availableChapters ?? novel.chapters.length;
+  const missingChapters =
+    novel.missingChapters ?? Math.max(0, novel.totalChapters - availableChapters);
+
   const handleShare = () => {
     navigator.clipboard?.writeText(window.location.href);
     setCopiedShare(true);
@@ -197,16 +210,46 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
 
           {/* Chapter List */}
           <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-              <h2 className="font-headline text-2xl font-bold text-white">Chapters</h2>
+            <div className="flex justify-between items-center gap-4">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <h2 className="font-headline text-2xl font-bold text-white">Chapters</h2>
+                {/*
+                  Badge "đã có / tổng" — chống hiểu nhầm.
+                  Danh sách chỉ render chương ĐÃ đồng bộ, nên nếu không nói rõ
+                  tổng thì người dùng thấy 1 dòng và tưởng truyện có 1 chương.
+                */}
+                <span className="font-label text-xs text-[#cabeff] bg-[#cabeff]/10 border border-[#cabeff]/25 px-2.5 py-1 rounded-full tabular-nums">
+                  Showing {availableChapters.toLocaleString('en-US')} /{' '}
+                  {novel.totalChapters.toLocaleString('en-US')} chapters
+                </span>
+              </div>
               <button
                 onClick={() => setIsNewestFirst(!isNewestFirst)}
-                className="text-[#c9c4d8] hover:text-[#cabeff] font-label text-sm flex items-center gap-2 cursor-pointer transition-colors"
+                className="text-[#c9c4d8] hover:text-[#cabeff] font-label text-sm flex items-center gap-2 cursor-pointer transition-colors shrink-0"
               >
                 <span className="material-symbols-outlined text-lg">sort</span>
                 {isNewestFirst ? 'Newest First' : 'Oldest First'}
               </button>
             </div>
+
+            {/*
+              Giải thích khoảng chênh. KHÔNG coi đây là lỗi — crawler cố ý chỉ nạp
+              một phần mục lục, và nói thẳng ra thì người dùng hiểu ngay thay vì
+              tưởng dữ liệu hỏng.
+            */}
+            {missingChapters > 0 && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-[#1d2026]/60 border border-white/10">
+                <span className="material-symbols-outlined text-[#c9c4d8] text-lg shrink-0">
+                  cloud_sync
+                </span>
+                <p className="font-body text-sm text-[#c9c4d8] leading-relaxed">
+                  {missingChapters.toLocaleString('en-US')} more chapter
+                  {missingChapters === 1 ? '' : 's'} exist at the source but{' '}
+                  {missingChapters === 1 ? 'has' : 'have'} not been synchronised yet.
+                  They will appear here automatically after the next library sync.
+                </p>
+              </div>
+            )}
 
             {/* Volume Group */}
             <div className="flex flex-col gap-3">
@@ -260,9 +303,14 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
                   onClick={() => setShowAllChapters(!showAllChapters)}
                   className="w-full py-4 text-[#c9c4d8] hover:text-white transition-colors bg-[#0b0e14]/50 rounded-b-xl border-x border-b border-white/5 font-label cursor-pointer"
                 >
+                  {/*
+                    Nút này mở rộng danh sách ĐANG CÓ, nên phải ghi
+                    availableChapters. Ghi totalChapters (991) là nói dối: bấm
+                    vào vẫn chỉ hiện đúng số chương đã đồng bộ.
+                  */}
                   {showAllChapters
                     ? 'Show Fewer Chapters'
-                    : `Show All ${novel.totalChapters} Chapters`}
+                    : `Show All ${availableChapters.toLocaleString('en-US')} Available Chapters`}
                 </button>
               )}
             </div>

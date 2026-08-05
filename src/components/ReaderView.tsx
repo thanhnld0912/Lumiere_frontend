@@ -141,17 +141,27 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                 Trạng thái rỗng. Cỡ chữ ở đây đặt bằng class Tailwind nên không
                 bị ảnh hưởng bởi fontSize/lineHeight inline của reader settings.
               */}
+              {/*
+                Trạng thái BÌNH THƯỜNG, không phải lỗi.
+                Crawler cố ý chưa nạp phần text của chương. Diễn đạt phải nói rõ
+                điều đó — người dùng thấy màn hình trống mà không được giải thích
+                sẽ tưởng ứng dụng hỏng.
+              */}
               <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
                 <span className="material-symbols-outlined text-[#cabeff]/40 text-5xl leading-none">
-                  auto_stories
+                  cloud_sync
                 </span>
                 <h3 className="font-headline text-xl font-bold text-[#e1e2eb] leading-snug">
                   Chapter content not available yet
                 </h3>
-                <p className="font-body text-sm text-[#c9c4d8] max-w-sm leading-relaxed">
-                  This chapter has been catalogued, but its text hasn't been synchronised
-                  from the translation group yet. It will appear here after the next
-                  library sync.
+                <p className="font-body text-sm text-[#c9c4d8] max-w-md leading-relaxed">
+                  This chapter has not been synchronised from the translation source yet.
+                  Library sync will download it automatically — nothing is broken and
+                  there is nothing you need to do.
+                </p>
+                <p className="font-label text-xs text-[#c9c4d8]/60 max-w-md leading-relaxed">
+                  Chapter {currentChapter.number} is already in the catalogue, so it will
+                  keep its place in the reading order once the text arrives.
                 </p>
               </div>
             </>

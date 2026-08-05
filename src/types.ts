@@ -37,7 +37,26 @@ export interface Novel {
   // thái này, và 'Unknown' là fallback trung thực khi không map được — tốt hơn
   // là mặc định gán bừa 'Ongoing'.
   status: 'Ongoing' | 'Completed' | 'Hiatus' | 'Dropped' | 'Unknown';
+
+  /**
+   * Tổng số chương theo NGUỒN báo (VD 991).
+   *
+   * KHÔNG BAO GIỜ dùng `chapters.length` thay cho số này — mảng `chapters` chỉ
+   * chứa phần mục lục đã đồng bộ, và ở màn danh sách còn bị rút gọn xuống 1-2
+   * phần tử.
+   */
   totalChapters: number;
+
+  /**
+   * Số chương thực sự đọc/xem được (COUNT từ bảng chapters).
+   *
+   * Optional vì `mockData.ts` cũ không có field này; API luôn trả về. Nơi dùng
+   * nên fallback về `chapters.length` — với dữ liệu mock thì mảng CHÍNH LÀ tất cả.
+   */
+  availableChapters?: number;
+
+  /** `totalChapters - availableChapters` — số chương chưa đồng bộ. */
+  missingChapters?: number;
   genres: string[];
   synopsis: string;
   chapters: Chapter[];
