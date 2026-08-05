@@ -83,6 +83,25 @@ export const Header: React.FC<HeaderProps> = ({
           >
             Timeline
           </button>
+
+          {/*
+            Tab Admin CHỈ hiện với tài khoản có quyền admin.
+            Đây chỉ là lớp giao diện — chốt chặn thật nằm ở backend, nơi
+            /api/admin/* trả 403 bất kể frontend hiển thị gì.
+          */}
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => onSelectTab('admin')}
+              className={`font-label text-sm transition-all cursor-pointer flex items-center gap-1.5 ${
+                currentTab === 'admin'
+                  ? 'text-[#cabeff] font-bold border-b-2 border-[#cabeff] pb-0.5'
+                  : 'text-[#c9c4d8] hover:text-[#cabeff]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">shield_person</span>
+              Admin
+            </button>
+          )}
         </div>
 
         {/* Right: Search & Profile Avatar */}

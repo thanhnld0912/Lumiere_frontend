@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { SearchModal } from './components/SearchModal';
 import { AuthModal } from './components/AuthModal';
+import { AdminView } from './components/AdminView';
 import { HomeView } from './components/HomeView';
 import { NovelDetailView } from './components/NovelDetailView';
 import { ReaderView } from './components/ReaderView';
@@ -133,6 +134,18 @@ export default function App() {
 
       if (!targetChapterId) return;
 
+      /*
+       * Đọc truyện là tính năng dành cho thành viên.
+       *
+       * Chặn NGAY ở đây thay vì để vào ReaderView rồi mới nhận 401: người dùng
+       * sẽ thấy màn hình đọc trống rỗng và không hiểu vì sao. Duyệt và tìm kiếm
+       * vẫn mở bình thường cho khách.
+       */
+      if (!isAuthenticated) {
+        setIsAuthOpen(true);
+        return;
+      }
+
       setSelectedNovel(novel);
       setSelectedChapterId(targetChapterId);
       setPreviousTab(currentTab);
@@ -159,18 +172,25 @@ export default function App() {
             ),
           };
         });
-      } catch {
-        // ReaderView có nội dung dự phòng sẵn nên không cần chặn người dùng.
+      } catch (error) {
+        /*
+         * Token hết hạn giữa chừng: quay về màn trước và mở form đăng nhập, thay
+         * vì để người dùng nhìn màn hình đọc trống mà không rõ chuyện gì.
+         */
+        if (error instanceof ApiError && error.isAuthError) {
+          setCurrentTab('detail');
+          setIsAuthOpen(true);
+          return;
+        }
+        // Lỗi khác: ReaderView có trạng thái rỗng sẵn, không cần chặn người dùng.
       }
 
-      // 2. Ghi tiến độ — chỉ khi đã đăng nhập, vì endpoint yêu cầu auth.
-      if (isAuthenticated) {
-        try {
-          await novelApi.updateProgress(novel.id, targetChapterId);
-          void refreshUser(); // stats.chaptersRead vừa thay đổi
-        } catch {
-          // Không rollback: đã đọc rồi thì đánh dấu đã đọc trên UI vẫn đúng.
-        }
+      // 2. Ghi tiến độ đọc.
+      try {
+        await novelApi.updateProgress(novel.id, targetChapterId);
+        void refreshUser(); // stats.chaptersRead vừa thay đổi
+      } catch {
+        // Không rollback: đã đọc rồi thì đánh dấu đã đọc trên UI vẫn đúng.
       }
     },
     [currentTab, isAuthenticated, patchNovel, refreshUser],
@@ -325,6 +345,13 @@ export default function App() {
             {currentTab === 'discover' && (
               <DiscoverView novels={novels} onSelectNovel={handleSelectNovel} />
             )}
+
+            {/*
+              Chặn ở CẢ HAI phía: tab admin chỉ hiện trong nav khi role='admin',
+              và ở đây kiểm tra lại lần nữa. Backend vẫn là chốt chặn thật —
+              endpoint trả 403 bất kể frontend hiển thị gì.
+            */}
+            {currentTab === 'admin' && user?.role === 'admin' && <AdminView />}
 
             {(currentTab === 'library' || currentTab === 'profile') && (
               <ProfileView

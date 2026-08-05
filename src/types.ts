@@ -93,6 +93,74 @@ export interface User {
   stats?: UserStats;
 }
 
+/**
+ * Số liệu vận hành cho bảng điều khiển admin — GET /api/admin/stats.
+ * Mọi con số đều tính từ database, không có giá trị mẫu nào.
+ */
+export interface LabelledCount {
+  label: string;
+  count: number;
+}
+
+export interface DailyPoint {
+  date: string;
+  count: number;
+}
+
+export interface AdminStats {
+  library: {
+    novels: number;
+    chapters: number;
+    genres: number;
+    tags: number;
+    translationGroups: number;
+  };
+  users: {
+    total: number;
+    admins: number;
+    newLast30Days: number;
+    activeLast7Days: number;
+  };
+  engagement: {
+    bookmarks: number;
+    chaptersRead: number;
+    novelsStarted: number;
+  };
+  crawler: {
+    sources: {
+      slug: string;
+      name: string;
+      enabled: boolean;
+      novels: number;
+      lastCrawledAt: string | null;
+    }[];
+    lastRun: {
+      sourceSlug: string | null;
+      mode: string | null;
+      status: string;
+      progress: number;
+      startedAt: string;
+      finishedAt: string | null;
+    } | null;
+    chaptersAddedLast30Days: number;
+    novelsNeverCrawled: number;
+  };
+  breakdown: {
+    byStatus: LabelledCount[];
+    topGenres: LabelledCount[];
+    dailyChapters: DailyPoint[];
+  };
+  topNovels: {
+    slug: string;
+    title: string;
+    coverUrl: string;
+    bookmarks: number;
+    rating: number;
+    ratingsCount: number;
+    totalChapters: number;
+  }[];
+}
+
 export type ThemeMode = 'dark' | 'sepia' | 'amoled';
 export type FontFamily = 'serif' | 'sans';
 

@@ -9,7 +9,14 @@
  * khớp 1-1 với src/types.ts. Nhờ vậy HomeView / DiscoverView / SearchModal /
  * TimelineView / ReaderView / BottomNav không cần sửa gì.
  */
-import type { Chapter, Novel, SyncStats, TimelineItem, User } from '../types';
+import type {
+  AdminStats,
+  Chapter,
+  Novel,
+  SyncStats,
+  TimelineItem,
+  User,
+} from '../types';
 
 /** Base URL của API. Đặt VITE_API_URL trong .env.local để trỏ tới backend đã deploy. */
 const API_BASE_URL: string =
@@ -259,6 +266,15 @@ export const libraryApi = {
 
   history(): Promise<NovelListResponse> {
     return request<NovelListResponse>('/api/library/history');
+  },
+};
+
+/* ── Admin ─────────────────────────────────────────────────── */
+
+export const adminApi = {
+  /** Chỉ tài khoản role='admin' gọi được; các role khác nhận 403. */
+  stats(signal?: AbortSignal): Promise<AdminStats> {
+    return request<AdminStats>('/api/admin/stats', signal ? { signal } : {});
   },
 };
 
