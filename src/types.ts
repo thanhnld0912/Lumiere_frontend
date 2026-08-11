@@ -27,6 +27,18 @@ export interface Novel {
   id: string;
   title: string;
   author: string;
+
+  /**
+   * Trang của người đăng ở site nguồn (VD trang cá nhân ScribbleHub).
+   *
+   * Vắng mặt khi nguồn không cho biết — NovelUpdates chỉ có tên tác giả dạng
+   * chuỗi. Vắng mặt thì UI ẩn hẳn nút, không hiện liên kết chết.
+   */
+  authorUrl?: string;
+
+  /** Trang của TRUYỆN ở site nguồn. Vắng mặt với novel không đến từ crawler. */
+  sourceUrl?: string;
+
   artist?: string;
   coverUrl: string;
   backdropUrl?: string;

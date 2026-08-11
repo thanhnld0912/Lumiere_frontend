@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Novel, SyncStats, TimelineItem } from './types';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -9,10 +9,30 @@ import { HomeView } from './components/HomeView';
 import { NovelDetailView } from './components/NovelDetailView';
 import { ReaderView } from './components/ReaderView';
 import { TimelineView } from './components/TimelineView';
-import { DiscoverView } from './components/DiscoverView';
+import {
+  DiscoverView,
+  INITIAL_DISCOVER_STATE,
+  type DiscoverState,
+} from './components/DiscoverView';
 import { ProfileView } from './components/ProfileView';
 import { useAuth } from './context/AuthContext';
 import { ApiError, novelApi, timelineApi, translationGroupApi } from './services/api';
+
+/**
+ * Một điểm dừng trong lịch sử điều hướng.
+ *
+ * Lưu `novelId`/`chapterId` chứ không lưu cả object Novel: object trong state
+ * được làm giàu dần (detail nạp thêm chapters, bookmark đổi), giữ bản sao cũ
+ * trong lịch sử sẽ khiến bấm Back là quay về dữ liệu đã lỗi thời.
+ */
+interface NavEntry {
+  tab: string;
+  novelId?: string;
+  chapterId?: string;
+}
+
+/** Chặn lịch sử phình vô hạn khi người dùng bấm qua lại giữa các tab. */
+const MAX_HISTORY = 50;
 
 /** SyncStats rỗng dùng trong lúc chờ API — TimelineView đọc các field này ngay khi mount. */
 const EMPTY_SYNC_STATS: SyncStats = {
@@ -34,10 +54,25 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [currentTab, setCurrentTab] = useState<string>('home');
-  const [previousTab, setPreviousTab] = useState<string>('home');
+  /**
+   * Ngăn xếp điều hướng thay cho cặp currentTab/previousTab cũ.
+   *
+   * Cặp cũ chỉ nhớ được ĐÚNG một bước, nên chuỗi home -> detail A -> detail B
+   * thì lùi lại từ B rơi thẳng về home. Ngăn xếp lùi đúng từng bước một.
+   */
+  const [history, setHistory] = useState<NavEntry[]>([{ tab: 'home' }]);
+  const currentTab = history[history.length - 1]?.tab ?? 'home';
+  const canGoBack = history.length > 1;
+
+  /** Bản sao luôn mới của `history` cho các callback bất đồng bộ đọc. */
+  const historyRef = useRef(history);
+  historyRef.current = history;
+
   const [selectedNovel, setSelectedNovel] = useState<Novel | null>(null);
   const [selectedChapterId, setSelectedChapterId] = useState<string | undefined>(undefined);
+  /** Xem chi tiết ở DiscoverState — giữ ở đây để bấm Back là về đúng trang cũ. */
+  const [discoverState, setDiscoverState] = useState<DiscoverState>(INITIAL_DISCOVER_STATE);
+
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
 
@@ -90,32 +125,81 @@ export default function App() {
     );
   }, []);
 
-  const handleSelectTab = (tab: string) => {
-    setPreviousTab(currentTab);
-    setCurrentTab(tab);
+  /** Đẩy thêm một điểm dừng vào lịch sử và cuộn lên đầu trang. */
+  const pushEntry = useCallback((entry: NavEntry) => {
+    setHistory((previous) => {
+      const next = [...previous, entry];
+      return next.length > MAX_HISTORY ? next.slice(next.length - MAX_HISTORY) : next;
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
   /**
-   * Mở trang chi tiết. Gọi GET /api/novels/:slug để lấy ĐẦY ĐỦ chapters —
-   * endpoint list chỉ trả chương đầu và chương đang đọc dở, trong khi
+   * Hiển thị novel rồi nạp bản đầy đủ. Gọi GET /api/novels/:slug để lấy ĐẦY ĐỦ
+   * chapters — endpoint list chỉ trả chương đầu và chương đang đọc dở, trong khi
    * NovelDetailView cần toàn bộ danh sách.
+   *
+   * Tách khỏi handleSelectNovel để nút Back dùng lại được mà không ghi thêm
+   * bước mới vào lịch sử.
    */
+  const openNovel = useCallback(async (novel: Novel) => {
+    setSelectedNovel(novel); // hiển thị ngay bằng dữ liệu đã có
+
+    try {
+      const detail = await novelApi.detail(novel.id);
+      // Người dùng có thể đã bấm sang novel khác trong lúc chờ — đừng ghi đè.
+      setSelectedNovel((previous) => (previous?.id === detail.id ? detail : previous));
+    } catch {
+      // Giữ nguyên dữ liệu rút gọn — vẫn xem được, chỉ thiếu chương.
+    }
+  }, []);
+
+  /**
+   * Lùi lại đúng một bước và khôi phục thứ đang xem ở bước đó.
+   *
+   * Chỉ nạp lại novel khi id THỰC SỰ khác novel đang giữ trong state: bản trong
+   * mảng `novels` là bản rút gọn (thiếu chapters), gán đè vô điều kiện sẽ làm
+   * mất danh sách chương vừa nạp khi lùi từ reader về detail.
+   */
+  const goBack = useCallback(() => {
+    /*
+     * Đọc qua ref chứ không qua biến `history` đã bị đóng gói trong closure:
+     * handleReadChapter đẩy một bước rồi mới await, nếu request lỗi 401 mà lùi
+     * theo bản history cũ thì sẽ lùi quá một bước.
+     */
+    const current = historyRef.current;
+    if (current.length <= 1) return;
+
+    const next = current.slice(0, -1);
+    const entry = next[next.length - 1];
+    if (!entry) return;
+
+    setHistory(next);
+    setSelectedChapterId(entry.chapterId);
+
+    if (entry.novelId && entry.novelId !== selectedNovel?.id) {
+      const target = novels.find((novel) => novel.id === entry.novelId);
+      if (target) void openNovel(target);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [novels, openNovel, selectedNovel?.id]);
+
+  const handleSelectTab = useCallback(
+    (tab: string) => {
+      // Bấm lại đúng tab đang xem thì không tạo thêm một bước lịch sử vô nghĩa.
+      if (tab === currentTab) return;
+      pushEntry({ tab });
+    },
+    [currentTab, pushEntry],
+  );
+
   const handleSelectNovel = useCallback(
     async (novel: Novel) => {
-      setSelectedNovel(novel); // hiển thị ngay bằng dữ liệu đã có
-      setPreviousTab(currentTab);
-      setCurrentTab('detail');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      try {
-        const detail = await novelApi.detail(novel.id);
-        setSelectedNovel(detail);
-      } catch {
-        // Giữ nguyên dữ liệu rút gọn — vẫn xem được, chỉ thiếu chương.
-      }
+      pushEntry({ tab: 'detail', novelId: novel.id });
+      await openNovel(novel);
     },
-    [currentTab],
+    [openNovel, pushEntry],
   );
 
   /**
@@ -148,9 +232,7 @@ export default function App() {
 
       setSelectedNovel(novel);
       setSelectedChapterId(targetChapterId);
-      setPreviousTab(currentTab);
-      setCurrentTab('reader');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      pushEntry({ tab: 'reader', novelId: novel.id, chapterId: targetChapterId });
 
       // 3. Optimistic: đánh dấu đã đọc ngay trên UI.
       patchNovel(novel.id, {
@@ -178,7 +260,7 @@ export default function App() {
          * vì để người dùng nhìn màn hình đọc trống mà không rõ chuyện gì.
          */
         if (error instanceof ApiError && error.isAuthError) {
-          setCurrentTab('detail');
+          goBack();
           setIsAuthOpen(true);
           return;
         }
@@ -193,7 +275,7 @@ export default function App() {
         // Không rollback: đã đọc rồi thì đánh dấu đã đọc trên UI vẫn đúng.
       }
     },
-    [currentTab, isAuthenticated, patchNovel, refreshUser],
+    [goBack, isAuthenticated, patchNovel, pushEntry, refreshUser],
   );
 
   /**
@@ -247,17 +329,6 @@ export default function App() {
     [isAuthenticated],
   );
 
-  const handleBack = () => {
-    if (currentTab === 'reader') {
-      setCurrentTab('detail');
-    } else if (currentTab === 'detail') {
-      setCurrentTab(previousTab === 'detail' || previousTab === 'reader' ? 'home' : previousTab);
-    } else {
-      setCurrentTab('home');
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   return (
     <div className="min-h-screen bg-[#101319] text-[#e1e2eb] font-body selection:bg-[#cabeff]/30 selection:text-[#cabeff]">
       {/* Top Header Navigation (hidden in full Reader Mode) */}
@@ -278,6 +349,22 @@ export default function App() {
           currentTab !== 'reader' ? 'pt-20' : 'pt-0'
         }`}
       >
+        {/*
+          Nút lùi lại.
+          Ẩn trong reader vì ReaderView đã có nút back riêng trong thanh công cụ
+          của nó, và ẩn khi lịch sử chỉ có một bước (không có gì để lùi về).
+        */}
+        {canGoBack && currentTab !== 'reader' && (
+          <button
+            onClick={goBack}
+            className="mb-6 inline-flex items-center gap-1.5 pl-2.5 pr-4 py-2 rounded-full bg-[#1d2026] border border-white/10 text-[#c9c4d8] font-label text-sm cursor-pointer transition-all hover:text-white hover:border-[#cabeff]/40 active:scale-95"
+            title="Quay lại"
+          >
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            Back
+          </button>
+        )}
+
         {/* Trạng thái tải / lỗi — trước đây không cần vì dữ liệu là hằng số. */}
         {isLoading && novels.length === 0 && (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -328,7 +415,7 @@ export default function App() {
               <ReaderView
                 novel={selectedNovel}
                 chapterId={selectedChapterId}
-                onBack={handleBack}
+                onBack={goBack}
                 onNavigateChapter={(nextChId) => handleReadChapter(selectedNovel, nextChId)}
               />
             )}
@@ -343,7 +430,14 @@ export default function App() {
             )}
 
             {currentTab === 'discover' && (
-              <DiscoverView novels={novels} onSelectNovel={handleSelectNovel} />
+              <DiscoverView
+                novels={novels}
+                onSelectNovel={handleSelectNovel}
+                state={discoverState}
+                onStateChange={(patch) =>
+                  setDiscoverState((previous) => ({ ...previous, ...patch }))
+                }
+              />
             )}
 
             {/*

@@ -70,6 +70,27 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
   const missingChapters =
     novel.missingChapters ?? Math.max(0, novel.totalChapters - availableChapters);
 
+  /*
+   * Thẻ dưới phần chương phục vụ HAI loại nguồn khác hẳn nhau:
+   *
+   *   NovelUpdates : có NHÓM DỊCH thật -> Follow là tính năng của Lumiere
+   *                  (POST /api/translation-groups/:slug/follow)
+   *   ScribbleHub  : KHÔNG có nhóm dịch, tác giả đăng trực tiếp -> Follow chỉ có
+   *                  thể là liên kết ra trang cá nhân của họ ở nguồn
+   *
+   * Phân biệt bằng `slug`, không phải bằng `name`: backend luôn trả object
+   * translationGroup (các field là chuỗi rỗng khi không có nhóm), nên bản thân
+   * object luôn truthy. Đó chính là lý do "Visit Site" từng trỏ vào '#'.
+   */
+  const hasTranslationGroup = Boolean(novel.translationGroup?.slug);
+
+  // Nhóm dịch có trang riêng thì ưu tiên; không thì trỏ thẳng vào trang truyện.
+  const visitUrl = hasTranslationGroup
+    ? novel.translationGroup?.siteUrl || novel.sourceUrl
+    : novel.sourceUrl;
+
+  const showSourceCard = hasTranslationGroup || Boolean(visitUrl) || Boolean(novel.authorUrl);
+
   const handleShare = () => {
     navigator.clipboard?.writeText(window.location.href);
     setCopiedShare(true);
@@ -316,12 +337,12 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
             </div>
           </div>
 
-          {/* Translation Group Section */}
-          {novel.translationGroup && (
+          {/* Nhóm dịch (NovelUpdates) HOẶC tác giả gốc (ScribbleHub) */}
+          {showSourceCard && (
             <div className="glass-panel p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 border border-[#cabeff]/20">
               <div className="flex items-center gap-5">
                 <div className="w-16 h-16 rounded-2xl bg-[#cabeff]/10 flex items-center justify-center border border-[#cabeff]/30 overflow-hidden flex-shrink-0">
-                  {novel.translationGroup.avatarUrl ? (
+                  {hasTranslationGroup && novel.translationGroup?.avatarUrl ? (
                     <img
                       src={novel.translationGroup.avatarUrl}
                       alt={novel.translationGroup.name}
@@ -329,41 +350,71 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
                     />
                   ) : (
                     <span className="material-symbols-outlined text-[#cabeff] text-3xl">
-                      auto_stories
+                      {hasTranslationGroup ? 'auto_stories' : 'edit_note'}
                     </span>
                   )}
                 </div>
                 <div className="flex flex-col">
                   <h3 className="font-headline text-xl font-bold text-white">
-                    {novel.translationGroup.name}
+                    {hasTranslationGroup ? novel.translationGroup?.name : novel.author}
                   </h3>
                   <p className="font-body text-sm text-[#c9c4d8]">
-                    {novel.translationGroup.quality}
+                    {hasTranslationGroup
+                      ? novel.translationGroup?.quality
+                      : /*
+                         * KHÔNG gọi họ là "Translation Group": ScribbleHub là nền
+                         * tảng đăng gốc, người này viết truyện chứ không dịch.
+                         */
+                        'Original Author'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <a
-                  href={novel.translationGroup.siteUrl || '#'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-6 py-2.5 rounded-full glass-panel hover:bg-[#cabeff]/10 hover:text-[#cabeff] transition-all text-[#c9c4d8] font-label text-sm"
-                >
-                  Visit Site
-                </a>
-                <button
-                  onClick={handleToggleFollow}
-                  className={`px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all cursor-pointer font-label text-sm ${
-                    isGroupFollowed
-                      ? 'bg-[#32353c] text-white border border-white/10'
-                      : 'bg-[#cabeff] text-[#31009a] hover:scale-105 active:scale-95'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    {isGroupFollowed ? 'check' : 'add'}
-                  </span>
-                  {isGroupFollowed ? 'Following' : 'Follow'}
-                </button>
+                {/* Không có URL thì ẩn hẳn, thay vì hiện nút trỏ vào '#'. */}
+                {visitUrl && (
+                  <a
+                    href={visitUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="px-6 py-2.5 rounded-full glass-panel hover:bg-[#cabeff]/10 hover:text-[#cabeff] transition-all text-[#c9c4d8] font-label text-sm"
+                  >
+                    Visit Site
+                  </a>
+                )}
+
+                {hasTranslationGroup ? (
+                  /* Nhóm dịch thật -> Follow là tính năng của Lumiere, có lưu trạng thái. */
+                  <button
+                    onClick={handleToggleFollow}
+                    className={`px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all cursor-pointer font-label text-sm ${
+                      isGroupFollowed
+                        ? 'bg-[#32353c] text-white border border-white/10'
+                        : 'bg-[#cabeff] text-[#31009a] hover:scale-105 active:scale-95'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      {isGroupFollowed ? 'check' : 'add'}
+                    </span>
+                    {isGroupFollowed ? 'Following' : 'Follow'}
+                  </button>
+                ) : (
+                  /*
+                   * Tác giả gốc -> Lumiere không có khái niệm "theo dõi tác giả",
+                   * nên nút này đưa thẳng tới trang cá nhân của họ ở nguồn, nơi
+                   * việc theo dõi thực sự diễn ra.
+                   */
+                  novel.authorUrl && (
+                    <a
+                      href={novel.authorUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all cursor-pointer font-label text-sm bg-[#cabeff] text-[#31009a] hover:scale-105 active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-sm">open_in_new</span>
+                      Follow Author
+                    </a>
+                  )
+                )}
               </div>
             </div>
           )}
