@@ -184,70 +184,73 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         ))}
       </div>
 
-      {/* Số lượng kết quả — cho biết đang đứng ở đâu trong tổng số. */}
-      {filteredNovels.length > 0 && (
-        <div className="flex items-baseline justify-between font-label text-sm text-[#c9c4d8] -mb-2">
-          <span>
-            Showing{' '}
-            <span className="text-[#e1e2eb] font-bold">
-              {firstIndex + 1}–{firstIndex + pageNovels.length}
-            </span>{' '}
-            of <span className="text-[#e1e2eb] font-bold">{filteredNovels.length}</span> novels
-          </span>
-          {totalPages > 1 && (
-            <span className="hidden sm:inline">
-              Page {safePage} / {totalPages}
+      {/*
+        Dòng đếm và lưới nằm CHUNG một khối, và đó cũng là mốc cuộn khi đổi
+        trang. Nếu lấy riêng lưới làm mốc thì sau mỗi lần bấm số trang, dòng
+        "Showing…" bị đẩy lên trên khung nhìn và nằm khuất sau header cố định.
+      */}
+      <div ref={gridRef} className="scroll-mt-24">
+        {filteredNovels.length > 0 && (
+          <div className="flex items-baseline justify-between font-label text-sm text-[#c9c4d8] mb-5">
+            <span>
+              Showing{' '}
+              <span className="text-[#e1e2eb] font-bold">
+                {firstIndex + 1}–{firstIndex + pageNovels.length}
+              </span>{' '}
+              of <span className="text-[#e1e2eb] font-bold">{filteredNovels.length}</span> novels
             </span>
-          )}
-        </div>
-      )}
-
-      {/* Grid */}
-      <div
-        ref={gridRef}
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 scroll-mt-24"
-      >
-        {pageNovels.length === 0 ? (
-          <div className="col-span-full text-center py-16 text-[#c9c4d8]">
-            No novels found matching your filters.
+            {totalPages > 1 && (
+              <span className="hidden sm:inline">
+                Page {safePage} / {totalPages}
+              </span>
+            )}
           </div>
-        ) : (
-          pageNovels.map((novel) => (
-            <div
-              key={novel.id}
-              onClick={() => onSelectNovel(novel)}
-              className="group cursor-pointer flex flex-col"
-            >
-              <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 shadow-lg group-hover:scale-[1.03] transition-all duration-300 border border-white/10 bg-[#272a31]">
-                <img
-                  src={novel.coverUrl}
-                  alt={novel.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-2 left-2 flex gap-1">
-                  <span className="bg-[#cabeff]/90 text-[#2a0088] px-2 py-0.5 rounded text-[10px] font-bold uppercase backdrop-blur-sm font-label">
-                    {novel.status}
+        )}
+
+        {/* Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          {pageNovels.length === 0 ? (
+            <div className="col-span-full text-center py-16 text-[#c9c4d8]">
+              No novels found matching your filters.
+            </div>
+          ) : (
+            pageNovels.map((novel) => (
+              <div
+                key={novel.id}
+                onClick={() => onSelectNovel(novel)}
+                className="group cursor-pointer flex flex-col"
+              >
+                <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 shadow-lg group-hover:scale-[1.03] transition-all duration-300 border border-white/10 bg-[#272a31]">
+                  <img
+                    src={novel.coverUrl}
+                    alt={novel.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 left-2 flex gap-1">
+                    <span className="bg-[#cabeff]/90 text-[#2a0088] px-2 py-0.5 rounded text-[10px] font-bold uppercase backdrop-blur-sm font-label">
+                      {novel.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between px-0.5 mb-1">
+                  <span className="text-[#60d4fb] text-xs font-label font-bold flex items-center gap-0.5">
+                    <span className="material-symbols-outlined text-xs filled">star</span>
+                    {novel.rating}
+                  </span>
+                  <span className="text-[#c9c4d8] text-[11px] font-label">
+                    {novel.totalChapters} ch
                   </span>
                 </div>
+                <h4 className="font-headline font-bold text-white text-base truncate group-hover:text-[#cabeff] transition-colors">
+                  {novel.title}
+                </h4>
+                <p className="font-body text-xs text-[#c9c4d8] truncate">
+                  by {novel.author}
+                </p>
               </div>
-              <div className="flex items-center justify-between px-0.5 mb-1">
-                <span className="text-[#60d4fb] text-xs font-label font-bold flex items-center gap-0.5">
-                  <span className="material-symbols-outlined text-xs filled">star</span>
-                  {novel.rating}
-                </span>
-                <span className="text-[#c9c4d8] text-[11px] font-label">
-                  {novel.totalChapters} ch
-                </span>
-              </div>
-              <h4 className="font-headline font-bold text-white text-base truncate group-hover:text-[#cabeff] transition-colors">
-                {novel.title}
-              </h4>
-              <p className="font-body text-xs text-[#c9c4d8] truncate">
-                by {novel.author}
-              </p>
-            </div>
-          ))
-        )}
+            ))
+          )}
+        </div>
       </div>
 
       {/* Chuyển trang */}

@@ -163,6 +163,23 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
                   Chapter {currentChapter.number} is already in the catalogue, so it will
                   keep its place in the reading order once the text arrives.
                 </p>
+
+                {/*
+                  Lối thoát trong lúc chờ. Mở trang TRUYỆN ở nguồn, không phải
+                  trang chương: chỉ novel mới có URL nguồn, địa chỉ từng chương
+                  không được lưu trong database.
+                */}
+                {novel.sourceUrl && (
+                  <a
+                    href={novel.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="mt-2 inline-flex items-center gap-2 px-6 py-2.5 rounded-full glass-panel border border-[#cabeff]/25 text-[#cabeff] font-label text-sm hover:bg-[#cabeff]/10 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-base">open_in_new</span>
+                    Read at the source
+                  </a>
+                )}
               </div>
             </>
           )}

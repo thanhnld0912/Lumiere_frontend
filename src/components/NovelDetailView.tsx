@@ -30,6 +30,25 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
   );
   const [copiedShare, setCopiedShare] = useState(false);
 
+  /*
+   * Cả hai kiểu "theo dõi" đều CHƯA dùng được:
+   *
+   *   - nhóm dịch : chưa novel nào có `translationGroup.slug`, nên nút Follow
+   *                 không có nhóm nào để gửi lên API
+   *   - tác giả   : dạng URL /profile/{id}/{username}/ mới chỉ là suy luận từ
+   *                 khuôn mẫu WordPress, chưa xác minh được vì ScribbleHub trả
+   *                 403 cho mọi trang HTML
+   *
+   * Dẫn người dùng tới một trang có thể hỏng thì tệ hơn là nói thẳng.
+   *
+   * Kiểu `boolean` là cố ý — để `true` nguyên văn thì TypeScript thu hẹp kiểu
+   * và nhánh follow thật trở thành code chết. Đổi cờ này về false là tính năng
+   * sống lại, không phải viết lại.
+   */
+  const FOLLOW_COMING_SOON: boolean = true;
+
+  const [showComingSoon, setShowComingSoon] = useState(false);
+
   // Đồng bộ lại khi đổi sang novel khác hoặc khi detail được nạp xong từ API.
   useEffect(() => {
     setIsGroupFollowed(novel.translationGroup?.isFollowed || false);
@@ -89,7 +108,11 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
     ? novel.translationGroup?.siteUrl || novel.sourceUrl
     : novel.sourceUrl;
 
-  const showSourceCard = hasTranslationGroup || Boolean(visitUrl) || Boolean(novel.authorUrl);
+  /*
+   * Thẻ nguồn hiện kể cả khi chưa có URL nào: nút Follow giờ chỉ mở thông báo
+   * nên không còn phụ thuộc vào việc có link hay không.
+   */
+  const showSourceCard = true;
 
   const handleShare = () => {
     navigator.clipboard?.writeText(window.location.href);
@@ -382,39 +405,30 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
                   </a>
                 )}
 
-                {hasTranslationGroup ? (
-                  /* Nhóm dịch thật -> Follow là tính năng của Lumiere, có lưu trạng thái. */
-                  <button
-                    onClick={handleToggleFollow}
-                    className={`px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all cursor-pointer font-label text-sm ${
-                      isGroupFollowed
-                        ? 'bg-[#32353c] text-white border border-white/10'
-                        : 'bg-[#cabeff] text-[#31009a] hover:scale-105 active:scale-95'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      {isGroupFollowed ? 'check' : 'add'}
-                    </span>
-                    {isGroupFollowed ? 'Following' : 'Follow'}
-                  </button>
-                ) : (
-                  /*
-                   * Tác giả gốc -> Lumiere không có khái niệm "theo dõi tác giả",
-                   * nên nút này đưa thẳng tới trang cá nhân của họ ở nguồn, nơi
-                   * việc theo dõi thực sự diễn ra.
-                   */
-                  novel.authorUrl && (
-                    <a
-                      href={novel.authorUrl}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all cursor-pointer font-label text-sm bg-[#cabeff] text-[#31009a] hover:scale-105 active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-sm">open_in_new</span>
-                      Follow Author
-                    </a>
-                  )
-                )}
+                {/*
+                  Một nút duy nhất cho cả hai kiểu nguồn, và nó mở thông báo
+                  chứ không gọi API / mở tab mới. Nhãn vẫn phân biệt theo nguồn
+                  để khi tính năng chạy được thì chỉ cần đổi lại onClick.
+                */}
+                <button
+                  onClick={
+                    FOLLOW_COMING_SOON ? () => setShowComingSoon(true) : handleToggleFollow
+                  }
+                  className={`px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all cursor-pointer font-label text-sm ${
+                    !FOLLOW_COMING_SOON && isGroupFollowed
+                      ? 'bg-[#32353c] text-white border border-white/10'
+                      : 'bg-[#cabeff] text-[#31009a] hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    {!FOLLOW_COMING_SOON && isGroupFollowed ? 'check' : 'add'}
+                  </span>
+                  {!FOLLOW_COMING_SOON && isGroupFollowed
+                    ? 'Following'
+                    : hasTranslationGroup
+                      ? 'Follow'
+                      : 'Follow Author'}
+                </button>
               </div>
             </div>
           )}
@@ -497,6 +511,44 @@ export const NovelDetailView: React.FC<NovelDetailViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/*
+        Thông báo tính năng đang phát triển.
+        Nền tối bấm được để đóng; hộp bên trong chặn sự kiện nổi lên, nếu không
+        thì bấm vào chính hộp cũng đóng luôn.
+      */}
+      {showComingSoon && (
+        <div
+          onClick={() => setShowComingSoon(false)}
+          className="fixed inset-0 z-[60] flex items-center justify-center px-5 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="glass-panel border border-[#cabeff]/25 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl"
+          >
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#cabeff]/10 border border-[#cabeff]/30 flex items-center justify-center mb-5">
+              <span className="material-symbols-outlined text-[#cabeff] text-3xl">
+                construction
+              </span>
+            </div>
+            <h3 className="font-headline text-xl font-bold text-white mb-2">
+              Tính năng đang được phát triển
+            </h3>
+            <p className="font-body text-sm text-[#c9c4d8] mb-6">
+              Theo dõi {hasTranslationGroup ? 'nhóm dịch' : 'tác giả'} sẽ sớm có mặt. Cảm ơn bạn
+              đã kiên nhẫn.
+            </p>
+            <button
+              onClick={() => setShowComingSoon(false)}
+              className="w-full py-3 rounded-full bg-[#cabeff] text-[#31009a] font-bold font-label cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+            >
+              Đã hiểu
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
