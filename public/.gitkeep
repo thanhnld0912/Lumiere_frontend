@@ -1,0 +1,7 @@
+# Thư mục này được Vite chép NGUYÊN XI sang dist/ khi build.
+#
+# Thả logo.svg / favicon.svg / favicon.ico / apple-touch-icon.png / og-image.png
+# vào đây. Hướng dẫn đầy đủ: ../LOGO.md
+#
+# File .gitkeep giữ cho thư mục tồn tại khi clone — git không theo dõi thư mục rỗng,
+# mà mất public/ thì mọi đường dẫn '/logo.svg' sẽ 404.

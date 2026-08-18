@@ -1,6 +1,7 @@
 import React from 'react';
 import { USER_AVATAR } from '../data/mockData';
 import type { User } from '../types';
+import { Logo } from './Logo';
 
 interface HeaderProps {
   currentTab: string;
@@ -33,12 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
           >
             menu
           </button>
-          <span
-            onClick={() => onSelectTab('home')}
-            className="font-display text-2xl font-bold tracking-tight text-[#cabeff] cursor-pointer hover:opacity-90 transition-opacity"
-          >
-            Lumiere
-          </span>
+          <Logo onClick={() => onSelectTab('home')} />
         </div>
 
         {/* Center: Desktop Navigation */}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Novel, Chapter, ReaderSettings } from '../types';
+import { Logo } from './Logo';
 
 interface ReaderViewProps {
   novel: Novel;
@@ -88,9 +89,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({
             >
               arrow_back
             </button>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-[#cabeff]">
-              Lumiere
-            </h1>
+            <Logo heading />
           </div>
           <div className="flex items-center gap-6">
             <span className="hidden md:block font-label text-sm text-[#c9c4d8] font-medium truncate max-w-xs">
